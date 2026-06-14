@@ -19,8 +19,13 @@ RUN apk add --no-cache ca-certificates
 # 二进制与启动脚本都放到 /opt/application 下。
 WORKDIR /opt/application
 COPY --from=builder /revproxy /opt/application/revproxy
-COPY run.sh /opt/application/run.sh
-RUN chmod +x /opt/application/run.sh /opt/application/revproxy
+# 直接在镜像内生成启动脚本,避免独立文件被漏提交到仓库
+RUN printf '%s\n' \
+      '#!/bin/sh' \
+      'export PORT="${PORT:-8000}"' \
+      'exec /opt/application/revproxy' \
+      > /opt/application/run.sh \
+ && chmod +x /opt/application/run.sh /opt/application/revproxy
 
 # veFaaS 期望函数监听 8000 端口
 ENV PORT=8000
