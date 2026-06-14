@@ -12,14 +12,19 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /revproxy .
 
 # ---------- 运行阶段 ----------
 FROM alpine:3.20
-# 连接 HTTPS 上游需要根证书;再建个非 root 用户运行
-RUN apk add --no-cache ca-certificates && adduser -D -u 10001 app
-USER app
+# 连接 HTTPS 上游需要根证书
+RUN apk add --no-cache ca-certificates
 
-COPY --from=builder /revproxy /usr/local/bin/revproxy
+# 抖音云 veFaaS 约定:平台固定执行 /opt/application/run.sh 启动服务,
+# 二进制与启动脚本都放到 /opt/application 下。
+WORKDIR /opt/application
+COPY --from=builder /revproxy /opt/application/revproxy
+COPY run.sh /opt/application/run.sh
+RUN chmod +x /opt/application/run.sh /opt/application/revproxy
 
-# 平台会注入 PORT;这里给个默认值,程序会监听 :$PORT
-ENV PORT=8080
-EXPOSE 8080
+# veFaaS 期望函数监听 8000 端口
+ENV PORT=8000
+EXPOSE 8000
 
-ENTRYPOINT ["/usr/local/bin/revproxy"]
+# 本地 docker run 时用;veFaaS 会忽略此处而固定执行 run.sh
+CMD ["/opt/application/run.sh"]
