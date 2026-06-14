@@ -31,7 +31,7 @@ func main() {
 	// 默认值支持被环境变量覆盖,方便在 PaaS / 容器平台上部署
 	// (这类平台通常注入 PORT,且不便传命令行参数)。
 	listen := flag.String("listen", envOr("LISTEN", ":"+envOr("PORT", "8080")), "本地监听地址")
-	target := flag.String("target", envOr("TARGET", "https://x1xx.nextlnk1.com/"), "上游目标地址")
+	target := flag.String("target", envOr("TARGET", "http://ss.qqqpemaf.com"), "上游目标地址")
 	insecure := flag.Bool("insecure", envBool("INSECURE"), "跳过上游 TLS 证书校验")
 	preserveHost := flag.Bool("preserve-host", envBool("PRESERVE_HOST"), "保留客户端原始 Host 头(默认改写为上游 Host)")
 	flag.Parse()
