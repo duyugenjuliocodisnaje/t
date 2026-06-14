@@ -28,11 +28,18 @@ import (
 )
 
 func main() {
-	listen := flag.String("listen", ":8080", "本地监听地址")
-	target := flag.String("target", "https://xxx.nextlnk1.com/", "上游目标地址")
-	insecure := flag.Bool("insecure", false, "跳过上游 TLS 证书校验")
-	preserveHost := flag.Bool("preserve-host", false, "保留客户端原始 Host 头(默认改写为上游 Host)")
+	// 默认值支持被环境变量覆盖,方便在 PaaS / 容器平台上部署
+	// (这类平台通常注入 PORT,且不便传命令行参数)。
+	listen := flag.String("listen", envOr("LISTEN", ":"+envOr("PORT", "8080")), "本地监听地址")
+	target := flag.String("target", envOr("TARGET", "https://xxx.nextlnk1.com/"), "上游目标地址")
+	insecure := flag.Bool("insecure", envBool("INSECURE"), "跳过上游 TLS 证书校验")
+	preserveHost := flag.Bool("preserve-host", envBool("PRESERVE_HOST"), "保留客户端原始 Host 头(默认改写为上游 Host)")
 	flag.Parse()
+
+	// 若 listen 只是个纯端口号(平台常见做法),补上冒号。
+	if !strings.Contains(*listen, ":") {
+		*listen = ":" + *listen
+	}
 
 	upstream, err := url.Parse(*target)
 	if err != nil {
@@ -154,6 +161,23 @@ func withLogging(next http.Handler) http.Handler {
 		log.Printf("%s %s %s %s (%s)",
 			clientIP(r), r.Method, r.Host, r.URL.RequestURI(), time.Since(start).Round(time.Millisecond))
 	})
+}
+
+// envOr 返回环境变量 key 的值,为空时返回 def。
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+// envBool 当环境变量为 1/true/yes/on(忽略大小写)时返回 true。
+func envBool(key string) bool {
+	switch strings.ToLower(os.Getenv(key)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 func clientIP(r *http.Request) string {
